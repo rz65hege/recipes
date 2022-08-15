@@ -3,6 +3,12 @@ import re
 from datetime import datetime
 from uuid import UUID
 
+import coreapi
+import requests
+import time
+from rest_framework import status
+from rest_framework.response import Response
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
@@ -25,7 +31,7 @@ from cookbook.forms import (CommentForm, Recipe, SearchPreferenceForm, ShoppingP
                             UserCreateForm, UserNameForm, UserPreference, UserPreferenceForm)
 from cookbook.helper.permission_helper import group_required, has_group_permission, share_link_valid, switch_user_active_space
 from cookbook.models import (Comment, CookLog, InviteLink, MealPlan, SearchFields, SearchPreference, ShareLink,
-                             Space, ViewLog, UserSpace)
+                             Space, ViewLog, UserSpace, Ingredient, Food, Recipe)
 from cookbook.tables import (CookLogTable, ViewLogTable)
 from recipes.version import BUILD_REF, VERSION_NUMBER
 
@@ -115,10 +121,83 @@ def no_perm(request):
         return HttpResponseRedirect(reverse('account_login') + '?next=' + request.GET.get('next', '/search/'))
     return render(request, 'no_perm_info.html')
 
+def get_prediction(pk):
+    ingredients = Ingredient.objects.filter(unit=pk)
+    recipe = Recipe.objects.filter(pk=pk)
 
+    food = []
+    for ingredient in ingredients:
+        food.append({
+            "name": getattr(Food.objects.get(pk=getattr(ingredient, "food_id")), "name"),
+            "unit": "",
+            "amount": int(getattr(ingredient, "amount"))
+        })
+
+    url = settings.API_URL + 'prediction/'
+    headers = {'Content-Type': 'application/json'}
+
+    payload = { "recipe_text": getattr(recipe[0], "description"), "ingredients": []}
+    payload["ingredients"].extend(food)
+
+    response = requests.post(url, json = payload, headers=headers)
+
+    return response.json()
+
+def feedback(request):
+    url = settings.API_URL + 'feedback/'
+    headers = {'Content-Type': 'application/json'}
+
+    time = "None"
+    cooking_time = request.GET.get('cooking_time')
+    resting_time = request.GET.get('resting_time')
+    preparation_time = request.GET.get('preparation_time')
+    #ingredients = ','.join(request.GET.get('ingredients'))
+    #pk = request.GET.get('pk')
+    pk = request.GET.get('recipe_pk')
+
+    ingredients = Ingredient.objects.filter(unit=pk)
+    recipe = Recipe.objects.filter(pk=pk)
+
+    food = []
+    for ingredient in ingredients:
+        food.append({
+            "name": getattr(Food.objects.get(pk=getattr(ingredient, "food_id")), "name"),
+            "unit": "",
+            "amount": int(getattr(ingredient, "amount"))
+        })
+
+    result = get_prediction(pk)
+
+    payload = {
+        "recipe_text": getattr(recipe[0], "description"),
+        "predicted_times": {
+            "cooking_time": int(result['cooking_time']),
+            "resting_time": int(result['resting_time']),
+            "preparation_time": int(result['preparation_time'])
+        },
+        "actual_times": {
+            "cooking_time": int(cooking_time),
+            "resting_time": int(resting_time),
+            "preparation_time": int(preparation_time)
+        },
+        "ingredients": []
+    }
+    payload["ingredients"].extend(food)
+
+    response = requests.post(url, json = payload, headers=headers)
+
+    return HttpResponseRedirect('/feedback/')
+
+  
 def recipe_view(request, pk, share=None):
     with scopes_disabled():
         recipe = get_object_or_404(Recipe, pk=pk)
+        ingredients = Ingredient.objects.filter(unit=pk).values_list("food_id")
+        
+        food = []
+        for ingredient in ingredients:
+            food.append(getattr(Food.objects.get(pk=ingredient[0]), "name"))
+        
 
         if not request.user.is_authenticated and not share_link_valid(recipe, share):
             messages.add_message(request, messages.ERROR,
@@ -158,8 +237,19 @@ def recipe_view(request, pk, share=None):
                                           space=request.space).exists():
                 ViewLog.objects.create(recipe=recipe, created_by=request.user, space=request.space)
 
+        result = get_prediction(pk)
+        total_time = result['cooking_time'] + result['resting_time'] + result['preparation_time']
+        prediction = {
+                'total_time' : total_time,
+                'cooking_time' : result['cooking_time'],
+                'resting_time' : result['resting_time'],
+                'preparation_time' : result['preparation_time'],
+                'message': result,
+                'pk': pk
+            }
+                
         return render(request, 'recipe_view.html',
-                      {'recipe': recipe, 'comments': comments, 'comment_form': comment_form, 'share': share, })
+                      {'recipe': recipe, 'comments': comments, 'comment_form': comment_form, 'share': share, 'prediction': prediction, })
 
 
 @group_required('user')
