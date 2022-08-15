@@ -419,8 +419,12 @@
             console.warn('service worker not in navigator');
         }
     });
-</script>
-
+    $('#submit_btn').click(function() {
+        if ( ! $('form input:invalid' ).length ) {
+            setTimeout(function() {$('#feedbackModal').modal('hide');}, 400);
+        }
+    });
+</script>    
 <style>
     @media screen and (max-width: 1000px) {
         .navbar-collapse {
