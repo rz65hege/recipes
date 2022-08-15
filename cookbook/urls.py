@@ -145,6 +145,7 @@ urlpatterns = [
          name='service_worker'),
     path('manifest.json', (TemplateView.as_view(template_name="manifest.json", content_type='application/json', )),
          name='web_manifest'),
+    path('feedback/', views.feedback, name="feedback"),
 ]
 
 generic_models = (
