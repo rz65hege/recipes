@@ -1,8 +1,28 @@
+## How to use
+
+To use Tandoor with external API for predictions add variable API_URL to environment file. The test expected interface for API is in the file fastapi.py.
+
+To run fastapi.py use the follow command:
+```
+uvicorn main:app --reload
+```
+
+To check GET request:
+```
+curl -H 'Accept: application/json; indent=4'  http://127.0.0.1:8000/prediction/?ing=rise,something_else
+```
+
+To check POST request:
+```
+curl -X POST -H "Content-Type: application/json" "http://127.0.0.1:8000/feedback/" -d '{"ingredients":"rise,something_else", "time": 100}'
+```
+
+
 <h1 align="center">
   <br>
   <a href="https://tandoor.dev"><img src="https://github.com/vabene1111/recipes/raw/develop/docs/logo_color.svg" height="256px" width="256px"></a>
   <br>
-  Tandoor Recipes
+  Tandoor Recipes with Predictions
   <br>
 </h1>
 
