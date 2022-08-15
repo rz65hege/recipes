@@ -9,6 +9,64 @@
 
 {% block content %}
     {% recipe_rating recipe request.user as rating %}
+  <div class="card">
+    <form action="{% url 'feedback' %}" method="GET" target="feedbackframe">
+      <div class="mt-3">
+
+          <div id="accordion">
+            <div class="card">
+              <div class="" id="headingOne">
+                <h5 class="mb-0">
+                  <button class="btn btn-link" data-toggle="collapse" data-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                    {% trans 'User experience says that you will need ' %}{{ prediction.total_time }} {% trans ' min for cooking' %}
+                  </button>
+                  <!-- Button trigger modal -->
+                  <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#feedbackModal">
+                      Feedback
+                  </button>
+
+                  <!-- Modal -->
+                  <div class="modal fade" id="feedbackModal" tabindex="-1" role="dialog" aria-labelledby="feedbackModalLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="feedbackModalLabel">Feedback</h5>
+                          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                          </button>
+                        </div>
+                        <div class="modal-body">
+                          <iframe name="feedbackframe" id="feedbackframe" style="display: none;"></iframe>
+                          <input type="hidden" id="ingredients" name="ingredients" value="{{ prediction.ingredients }}">
+                          <input type="hidden" id="recipe_pk" name="recipe_pk" value="{{ prediction.pk }}">
+                          Cooking time: <input id="cooking_time" name="cooking_time" value="">
+                          Resting time: <input id="resting_time" name="resting_time" value="">
+                          Preparation time: <input id="preparation_time" name="preparation_time" value="">
+
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                          <button id="submit_btn" type="submit" class="btn btn-primary">Send</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </h5>
+              </div>
+
+              <div id="collapseOne" class="collapse" aria-labelledby="headingOne" data-parent="#accordion">
+                <div class="card-body">
+                  {% trans 'Cooking time' %}: {{ prediction.cooking_time }} <br>
+                  {% trans 'Resting time' %}: {{ prediction.resting_time }} <br>
+                  {% trans 'Preparation time' %}: {{ prediction.preparation_time }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+      </div>
+    </form>
+    </div>
 
     <div id="app">
         <recipe-view recipe_id="5"></recipe-view>
