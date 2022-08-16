@@ -122,70 +122,76 @@ def no_perm(request):
     return render(request, 'no_perm_info.html')
 
 def get_prediction(pk):
-    ingredients = Ingredient.objects.filter(unit=pk)
-    recipe = Recipe.objects.filter(pk=pk)
+    try:
+        ingredients = Ingredient.objects.filter(unit=pk)
+        recipe = Recipe.objects.filter(pk=pk)
 
-    food = []
-    for ingredient in ingredients:
-        food.append({
-            "name": getattr(Food.objects.get(pk=getattr(ingredient, "food_id")), "name"),
-            "unit": "",
-            "amount": int(getattr(ingredient, "amount"))
+        food = []
+        for ingredient in ingredients:
+                food.append({
+                "name": getattr(Food.objects.get(pk=getattr(ingredient, "food_id")), "name"),
+                "unit": "",
+                "amount": int(getattr(ingredient, "amount"))
         })
 
-    url = settings.API_URL + 'prediction/'
-    headers = {'Content-Type': 'application/json'}
+        url = settings.API_URL + 'prediction/'
+        headers = {'Content-Type': 'application/json'}
 
-    payload = { "recipe_text": getattr(recipe[0], "description"), "ingredients": []}
-    payload["ingredients"].extend(food)
+        payload = { "recipe_text": getattr(recipe[0], "description"), "ingredients": []}
+        payload["ingredients"].extend(food)
 
-    response = requests.post(url, json = payload, headers=headers)
-
-    return response.json()
+        response = requests.post(url, json = payload, headers=headers)
+    
+        return response.json()
+    except:
+        return {}
 
 def feedback(request):
-    url = settings.API_URL + 'feedback/'
-    headers = {'Content-Type': 'application/json'}
+    try:
+        url = settings.API_URL + 'feedback/'
+        headers = {'Content-Type': 'application/json'}
 
-    time = "None"
-    cooking_time = request.GET.get('cooking_time')
-    resting_time = request.GET.get('resting_time')
-    preparation_time = request.GET.get('preparation_time')
-    #ingredients = ','.join(request.GET.get('ingredients'))
-    #pk = request.GET.get('pk')
-    pk = request.GET.get('recipe_pk')
+        time = "None"
+        cooking_time = request.GET.get('cooking_time')
+        resting_time = request.GET.get('resting_time')
+        preparation_time = request.GET.get('preparation_time')
+    
+        pk = request.GET.get('recipe_pk')
 
-    ingredients = Ingredient.objects.filter(unit=pk)
-    recipe = Recipe.objects.filter(pk=pk)
+        ingredients = Ingredient.objects.filter(unit=pk)
+        recipe = Recipe.objects.filter(pk=pk)
 
-    food = []
-    for ingredient in ingredients:
-        food.append({
-            "name": getattr(Food.objects.get(pk=getattr(ingredient, "food_id")), "name"),
-            "unit": "",
-            "amount": int(getattr(ingredient, "amount"))
-        })
+        food = []
+        for ingredient in ingredients:
+            food.append({
+                "name": getattr(Food.objects.get(pk=getattr(ingredient, "food_id")), "name"),
+                "unit": "",
+                "amount": int(getattr(ingredient, "amount"))
+            })
 
-    result = get_prediction(pk)
+        result = get_prediction(pk)
 
-    payload = {
-        "recipe_text": getattr(recipe[0], "description"),
-        "predicted_times": {
-            "cooking_time": int(result['cooking_time']),
-            "resting_time": int(result['resting_time']),
-            "preparation_time": int(result['preparation_time'])
-        },
-        "actual_times": {
-            "cooking_time": int(cooking_time),
-            "resting_time": int(resting_time),
-            "preparation_time": int(preparation_time)
-        },
-        "ingredients": []
-    }
-    payload["ingredients"].extend(food)
+        payload = {
+            "recipe_text": getattr(recipe[0], "description"),
+            "predicted_times": {
+                "cooking_time": int(result['cooking_time']),
+                "resting_time": int(result['resting_time']),
+                "preparation_time": int(result['preparation_time'])
+            },
+            "actual_times": {
+                "cooking_time": int(cooking_time),
+                "resting_time": int(resting_time),
+                "preparation_time": int(preparation_time)
+            },
+            "ingredients": []
+        }
+        
+        payload["ingredients"].extend(food)
 
-    response = requests.post(url, json = payload, headers=headers)
-
+        response = requests.post(url, json = payload, headers=headers)
+    except:  
+        return HttpResponseRedirect('/feedback/')
+      
     return HttpResponseRedirect('/feedback/')
 
   
