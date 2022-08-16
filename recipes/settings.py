@@ -100,6 +100,7 @@ INSTALLED_APPS = [
     'django.contrib.sites',
     'django.contrib.staticfiles',
     'django.contrib.postgres',
+    'oauth2_provider',
     'django_prometheus',
     'django_tables2',
     'corsheaders',
