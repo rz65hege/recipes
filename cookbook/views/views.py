@@ -3,6 +3,7 @@ import re
 from datetime import datetime
 from uuid import UUID
 
+import requests
 import uuid
 import coreapi
 from rest_framework import status
