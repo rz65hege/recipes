@@ -1,15 +1,12 @@
 import os
 import re
-import uuid
-import coreapi
 from datetime import datetime
 from uuid import UUID
 
-import requests
-import time
+import uuid
+import coreapi
 from rest_framework import status
 from rest_framework.response import Response
-
 
 from django.conf import settings
 from django.contrib import messages
@@ -19,19 +16,20 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import Group
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.translation import gettext as _
 from django_scopes import scopes_disabled
-from oauth2_provider.models import AccessToken
+from rest_framework.authtoken.models import Token
 
 from cookbook.forms import (CommentForm, Recipe, SearchPreferenceForm, ShoppingPreferenceForm,
                             SpaceCreateForm, SpaceJoinForm, User,
                             UserCreateForm, UserNameForm, UserPreference, UserPreferenceForm)
 from cookbook.helper.permission_helper import group_required, has_group_permission, share_link_valid, switch_user_active_space
-from cookbook.models import (Comment, CookLog, InviteLink, SearchFields, SearchPreference, ShareLink,
+from cookbook.models import (Comment, CookLog, InviteLink, MealPlan, SearchFields, SearchPreference, ShareLink,
                              Space, ViewLog, UserSpace, Ingredient, Food, Recipe)
 from cookbook.tables import (CookLogTable, ViewLogTable)
 from recipes.version import BUILD_REF, VERSION_NUMBER
@@ -135,7 +133,7 @@ def get_prediction(pk):
                 "amount": int(getattr(ingredient, "amount"))
                 })
 
-        url = settings.API_URL + 'predict_times/'
+        url = settings.API_URL + 'prediction/'
         headers = {'Content-Type': 'application/json'}
 
         payload = { "recipe_text": getattr(recipe[0], "description"), "ingredients": []}
@@ -260,6 +258,7 @@ def recipe_view(request, pk, share=None):
         return render(request, 'recipe_view.html',
                       {'recipe': recipe, 'comments': comments, 'comment_form': comment_form, 'share': share, 'prediction': prediction})
 
+
 @group_required('user')
 def books(request):
     return render(request, 'books.html', {})
@@ -281,11 +280,7 @@ def view_profile(request, user_id):
 
 
 @group_required('guest')
-def user_settings(request):
-    if request.space.demo:
-        messages.add_message(request, messages.ERROR, _('This feature is not available in the demo version!'))
-        return redirect('index')
-
+def user_settings_new(request):
     return render(request, 'user_settings.html', {})
 
 
@@ -303,16 +298,54 @@ def ingredient_editor(request):
 
 
 @group_required('guest')
-def shopping_settings(request):
+def user_settings(request):
     if request.space.demo:
         messages.add_message(request, messages.ERROR, _('This feature is not available in the demo version!'))
         return redirect('index')
 
+    up = request.user.userpreference
     sp = request.user.searchpreference
     search_error = False
+    active_tab = 'account'
+
+    user_name_form = UserNameForm(instance=request.user)
 
     if request.method == "POST":
-        if 'search_form' in request.POST:
+        if 'preference_form' in request.POST:
+            active_tab = 'preferences'
+            form = UserPreferenceForm(request.POST, prefix='preference', space=request.space)
+            if form.is_valid():
+                if not up:
+                    up = UserPreference(user=request.user)
+
+                up.theme = form.cleaned_data['theme']
+                up.nav_color = form.cleaned_data['nav_color']
+                up.default_unit = form.cleaned_data['default_unit']
+                up.default_page = form.cleaned_data['default_page']
+                up.plan_share.set(form.cleaned_data['plan_share'])
+                up.ingredient_decimals = form.cleaned_data['ingredient_decimals']  # noqa: E501
+                up.comments = form.cleaned_data['comments']
+                up.use_fractions = form.cleaned_data['use_fractions']
+                up.use_kj = form.cleaned_data['use_kj']
+                up.sticky_navbar = form.cleaned_data['sticky_navbar']
+                up.left_handed = form.cleaned_data['left_handed']
+
+                up.save()
+
+        elif 'user_name_form' in request.POST:
+            user_name_form = UserNameForm(request.POST, prefix='name')
+            if user_name_form.is_valid():
+                request.user.first_name = user_name_form.cleaned_data['first_name']
+                request.user.last_name = user_name_form.cleaned_data['last_name']
+                request.user.save()
+
+        elif 'password_form' in request.POST:
+            password_form = PasswordChangeForm(request.user, request.POST)
+            if password_form.is_valid():
+                user = password_form.save()
+                update_session_auth_hash(request, user)
+
+        elif 'search_form' in request.POST:
             active_tab = 'search'
             search_form = SearchPreferenceForm(request.POST, prefix='search')
             if search_form.is_valid():
@@ -361,13 +394,39 @@ def shopping_settings(request):
                         sp.lookup = True
                         sp.unaccent.set(SearchFields.objects.all())
                         # full text on food is very slow, add search_vector field and index it (including Admin functions and postsave signal to rebuild index)
-                        sp.icontains.set([SearchFields.objects.get(name='Name')])
+                        sp.icontains.set([SearchFields.objects.get(name__in=['Name', 'Ingredients'])])
                         sp.istartswith.set([SearchFields.objects.get(name='Name')])
                         sp.trigram.clear()
                         sp.fulltext.set(SearchFields.objects.filter(name__in=['Ingredients']))
                         sp.trigram_threshold = 0.2
 
                     sp.save()
+        elif 'shopping_form' in request.POST:
+            shopping_form = ShoppingPreferenceForm(request.POST, prefix='shopping')
+            if shopping_form.is_valid():
+                if not up:
+                    up = UserPreference(user=request.user)
+
+                up.shopping_share.set(shopping_form.cleaned_data['shopping_share'])
+                up.mealplan_autoadd_shopping = shopping_form.cleaned_data['mealplan_autoadd_shopping']
+                up.mealplan_autoexclude_onhand = shopping_form.cleaned_data['mealplan_autoexclude_onhand']
+                up.mealplan_autoinclude_related = shopping_form.cleaned_data['mealplan_autoinclude_related']
+                up.shopping_auto_sync = shopping_form.cleaned_data['shopping_auto_sync']
+                up.filter_to_supermarket = shopping_form.cleaned_data['filter_to_supermarket']
+                up.default_delay = shopping_form.cleaned_data['default_delay']
+                up.shopping_recent_days = shopping_form.cleaned_data['shopping_recent_days']
+                up.shopping_add_onhand = shopping_form.cleaned_data['shopping_add_onhand']
+                up.csv_delim = shopping_form.cleaned_data['csv_delim']
+                up.csv_prefix = shopping_form.cleaned_data['csv_prefix']
+                if up.shopping_auto_sync < settings.SHOPPING_MIN_AUTOSYNC_INTERVAL:
+                    up.shopping_auto_sync = settings.SHOPPING_MIN_AUTOSYNC_INTERVAL
+                up.save()
+    if up:
+        preference_form = UserPreferenceForm(instance=up, space=request.space)
+        shopping_form = ShoppingPreferenceForm(instance=up)
+    else:
+        preference_form = UserPreferenceForm(space=request.space)
+        shopping_form = ShoppingPreferenceForm(space=request.space)
 
     fields_searched = len(sp.icontains.all()) + len(sp.istartswith.all()) + len(sp.trigram.all()) + len(
         sp.fulltext.all())
@@ -375,6 +434,9 @@ def shopping_settings(request):
         search_form = SearchPreferenceForm(instance=sp)
     elif not search_error:
         search_form = SearchPreferenceForm()
+
+    if (api_token := Token.objects.filter(user=request.user).first()) is None:
+        api_token = Token.objects.create(user=request.user)
 
     # these fields require postgresql - just disable them if postgresql isn't available
     if not settings.DATABASES['default']['ENGINE'] in ['django.db.backends.postgresql_psycopg2',
@@ -385,7 +447,12 @@ def shopping_settings(request):
         search_form.fields['fulltext'].disabled = True
 
     return render(request, 'settings.html', {
+        'preference_form': preference_form,
+        'user_name_form': user_name_form,
+        'api_token': api_token,
         'search_form': search_form,
+        'shopping_form': shopping_form,
+        'active_tab': active_tab
     })
 
 
