@@ -249,12 +249,12 @@ def recipe_view(request, pk, share=None):
 
         result = get_prediction(pk)
 
-        total_time = result['cooking_time'] + result['resting_time'] + result['preparation_time']
+        total_time = result.get('cooking_time') + result.get('resting_time') + result.get('preparation_time')
         prediction = {
                 'total_time' : total_time,
-                'cooking_time' : result['cooking_time'],
-                'resting_time' : result['resting_time'],
-                'preparation_time' : result['preparation_time'],
+                'cooking_time' : result.get('cooking_time'),
+                'resting_time' : result.get('resting_time'),
+                'preparation_time' : result.get('preparation_time'),
                 'message': result,
                 'pk': pk
         }
