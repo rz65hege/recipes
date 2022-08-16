@@ -197,11 +197,11 @@ def feedback(request):
 def recipe_view(request, pk, share=None):
     with scopes_disabled():
         recipe = get_object_or_404(Recipe, pk=pk)
-        ingredients = Ingredient.objects.filter(unit=pk).values_list("food_id")
+        #ingredients = Ingredient.objects.filter(unit=pk).values_list("food_id")
 
-        food = []
-        for ingredient in ingredients:
-            food.append(getattr(Food.objects.get(pk=ingredient[0]), "name"))
+        #food = []
+        #for ingredient in ingredients:
+            #food.append(getattr(Food.objects.get(pk=ingredient[0]), "name"))
 
         if not request.user.is_authenticated and not share_link_valid(recipe, share):
             messages.add_message(request, messages.ERROR,
@@ -241,8 +241,8 @@ def recipe_view(request, pk, share=None):
                                           space=request.space).exists():
                 ViewLog.objects.create(recipe=recipe, created_by=request.user, space=request.space)
 
-        client = coreapi.Client()
-        schema = client.get(settings.API_URL + 'prediction_lite/?ing=' + ','.join(food))
+        #client = coreapi.Client()
+        #schema = client.get(settings.API_URL + 'prediction_lite/?ing=' + ','.join(food))
 
         result = get_prediction(pk)
         total_time = result['cooking_time'] + result['resting_time'] + result['preparation_time']
