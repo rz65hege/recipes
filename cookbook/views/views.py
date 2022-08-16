@@ -198,11 +198,11 @@ def feedback(request):
 def recipe_view(request, pk, share=None):
     with scopes_disabled():
         recipe = get_object_or_404(Recipe, pk=pk)
-        ingredients = Ingredient.objects.filter(unit=pk).values_list("food_id")
+        #ingredients = Ingredient.objects.filter(unit=pk).values_list("food_id")
         
-        food = []
-        for ingredient in ingredients:
-            food.append(getattr(Food.objects.get(pk=ingredient[0]), "name"))
+        #food = []
+        #for ingredient in ingredients:
+            #food.append(getattr(Food.objects.get(pk=ingredient[0]), "name"))
         
 
         if not request.user.is_authenticated and not share_link_valid(recipe, share):
