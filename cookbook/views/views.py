@@ -134,7 +134,7 @@ def get_prediction(pk):
                 "amount": int(getattr(ingredient, "amount"))
                 })
 
-        url = settings.API_URL + 'predict_times/'
+        url = settings.API_URL + '/predict_times/'
         headers = {'Content-Type': 'application/json'}
 
         payload = { "recipe_text": getattr(recipe[0], "description"), "ingredients": []}
@@ -151,7 +151,7 @@ def get_prediction(pk):
 #        }
 
 def feedback(request):
-    url = settings.API_URL + 'feedback/'
+    url = settings.API_URL + '/feedback/'
     headers = {'Content-Type': 'application/json'}
 
     time = "None"
