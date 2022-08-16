@@ -134,7 +134,7 @@ def get_prediction(pk):
                 "amount": int(getattr(ingredient, "amount"))
         })
 
-        url = settings.API_URL + 'prediction/'
+        url = settings.API_URL + 'predict_times/'
         headers = {'Content-Type': 'application/json'}
 
         payload = { "recipe_text": getattr(recipe[0], "description"), "ingredients": []}
@@ -190,7 +190,7 @@ def feedback(request):
 
         response = requests.post(url, json = payload, headers=headers)
     except:  
-        return HttpResponseRedirect('/feedback/')
+        return HttpResponseRedirect('/')
       
     return HttpResponseRedirect('/feedback/')
 
@@ -260,7 +260,7 @@ def recipe_view(request, pk, share=None):
                      'cooking_time' : result['cooking_time'],
                      'resting_time' : result['resting_time'],
                      'preparation_time' : result['preparation_time'],
-                     'message': result,
+                     'message': settings.API_URL,
                      'pk': pk
             }
         except:
