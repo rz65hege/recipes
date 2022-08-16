@@ -248,7 +248,7 @@ def recipe_view(request, pk, share=None):
                'cooking_time' : 'none',
                'resting_time' : 'none',
                'preparation_time' : 'none',
-               'message': 'none',
+               'message': settings.API_URL,
                'pk': pk
         }
                 
