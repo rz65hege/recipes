@@ -243,16 +243,29 @@ def recipe_view(request, pk, share=None):
                                           space=request.space).exists():
                 ViewLog.objects.create(recipe=recipe, created_by=request.user, space=request.space)
 
-        result = get_prediction(pk)
-        total_time = result['cooking_time'] + result['resting_time'] + result['preparation_time']
         prediction = {
-                'total_time' : total_time,
-                'cooking_time' : result['cooking_time'],
-                'resting_time' : result['resting_time'],
-                'preparation_time' : result['preparation_time'],
-                'message': result,
-                'pk': pk
+               'total_time' : 'none',
+               'cooking_time' : 'none',
+               'resting_time' : 'none',
+               'preparation_time' : 'none',
+               'message': 'none',
+               'pk': pk
+        }
+                
+        try:
+            result = get_prediction(pk)
+            total_time = result['cooking_time'] + result['resting_time'] + result['preparation_time']
+            prediction = {
+                     'total_time' : total_time,
+                     'cooking_time' : result['cooking_time'],
+                     'resting_time' : result['resting_time'],
+                     'preparation_time' : result['preparation_time'],
+                     'message': result,
+                     'pk': pk
             }
+        except:
+            print("Error, prediction")
+          
                 
         return render(request, 'recipe_view.html',
                       {'recipe': recipe, 'comments': comments, 'comment_form': comment_form, 'share': share, 'prediction': prediction, })
