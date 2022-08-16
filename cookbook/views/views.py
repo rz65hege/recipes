@@ -122,6 +122,11 @@ def no_perm(request):
     return render(request, 'no_perm_info.html')
 
 def get_prediction(pk):
+    json_resp = {
+             'cooking_time' : "none",
+             'resting_time' : "none",
+             'preparation_time' : "none"
+         }
     try:
         ingredients = Ingredient.objects.filter(unit=pk)
         recipe = Recipe.objects.filter(pk=pk)
@@ -142,13 +147,10 @@ def get_prediction(pk):
 
         response = requests.post(url, json = payload, headers=headers)
 
-        return response.json()
+        json_resp = response.json()
     except:
-        return {
-            'cooking_time' : "none",
-            'resting_time' : "none",
-            'preparation_time' : "none"
-        }
+         return json_resp
+    return json_resp
 
 def feedback(request):
     url = settings.API_URL + 'feedback/'
@@ -246,6 +248,7 @@ def recipe_view(request, pk, share=None):
         #schema = client.get(settings.API_URL + 'prediction_lite/?ing=' + ','.join(food))
 
         result = get_prediction(pk)
+
         total_time = result['cooking_time'] + result['resting_time'] + result['preparation_time']
         prediction = {
                 'total_time' : total_time,
@@ -254,7 +257,7 @@ def recipe_view(request, pk, share=None):
                 'preparation_time' : result['preparation_time'],
                 'message': result,
                 'pk': pk
-            }
+        }
 
         return render(request, 'recipe_view.html',
                       {'recipe': recipe, 'comments': comments, 'comment_form': comment_form, 'share': share, 'prediction': prediction})
