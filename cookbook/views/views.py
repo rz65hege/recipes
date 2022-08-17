@@ -142,7 +142,8 @@ def get_prediction(pk):
         url = settings.API_URL + 'predict_times/'
         headers = {'Content-Type': 'application/json'}
 
-        payload = { "recipe_text": getattr(recipe[0], "description"), "ingredients": []}
+        #payload = { "recipe_text": getattr(recipe[0], "description"), "ingredients": []}
+        payload = { "recipe_text": "text", "ingredients": []}
         payload["ingredients"].extend(food)
 
         response = requests.post(url, json = payload, headers=headers)
